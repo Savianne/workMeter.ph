@@ -1,0 +1,1 @@
+export type  TLOGIN_ERR = "LOGIN_NO_USER" | "LOGIN_WRONG_PASS";
