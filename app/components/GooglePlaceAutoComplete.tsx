@@ -17,7 +17,7 @@ import {
 
 const GooglePlaceAutoComplete = () => {
     const { ref, autocompleteRef } = usePlacesWidget({
-            apiKey: "AIzaSyCOcRov_9qcsPfKfyhkhcsk75WbTOntg4A",
+            apiKey: `GOOGLE API KEY`,
             onPlaceSelected: (place) => {
             console.log(place);
         }
