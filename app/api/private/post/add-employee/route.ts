@@ -98,8 +98,6 @@ export async function POST(req:NextRequest) {
             `, [employeeUID, formData.first_name, formData.middle_name, formData.surname, formData.ext_name, formData.sex, formData.date_of_birth, formData.cp_number, formData.email, formData.marital_status, formData.citizenship, address.insertId, formData.designation, formData.employment_status, formData.date_hired, schedule.insertId, salary.insertId])
             
             await conn.query("INSERT INTO company_employees(company_id, employee_id) VALUES(?, ?)", [token.companyId, employeeUID]);
-
-            await conn.query("INSERT INTO employee_salary(employee_id, basis, salary) VALUES(?, ?, ?)", [employeeUID, formData.salary_basis, formData.salary]);
             
             await conn.commit();
             

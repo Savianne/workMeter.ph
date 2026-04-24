@@ -3,7 +3,6 @@ import React from 'react';
 import { styled } from '@mui/material/styles';
 import doApiRequest from '@/app/helpers/doApiRequest';
 import TLeaveRequestFromDB from '@/app/types/leave-request-from-db';
-import AddLeaveTypeFormDialog from '@/app/components/dialogs/AddLeaveTypeForm';
 import { object, mixed, number, string, ValidationError } from 'yup';
 import debounce from "lodash/debounce";
 import useDeleteModal from '@/app/components/DeleteModal/useDeleteModal';
@@ -25,9 +24,6 @@ import {
     IconButton,
     InputAdornment,
     Button,
-    MenuItem,
-    ListItemIcon,
-    CircularProgress
 } from '@mui/material';
 import { enqueueSnackbar } from 'notistack';
 
@@ -233,7 +229,7 @@ const LeaveRequestTable: React.FC = () => {
                         },
                     },
                 }}/>
-                <Button variant='contained' size='medium' startIcon={<AddIcon />} onClick={() => setAddLeaveFormState(true)}>Add Leave</Button>
+                <Button sx={{color: "#fff", backgroundColor: "var(--primaryAppColor)", background: "linear-gradient(90deg,rgba(25, 118, 210, 1) 0%, var(--secondaryAppColor) 100%)"}} variant='contained' size='medium' startIcon={<AddIcon />} onClick={() => setAddLeaveFormState(true)}>Add Leave</Button>
             </Box>
         ),
         onEditingRowSave: async ({ table, values, row, exitEditingMode }) => {

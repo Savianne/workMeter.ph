@@ -9,6 +9,7 @@ import { ThemeModeProvider } from "./context/ThemeModeProvider";
 import NotiStackProvider from "./components/NotiStack";
 import DeleteModalContext from "./context/DeleteModalContext";
 import DeleteModal from "./components/DeleteModal/DeleteModal";
+import GradientIcon from "./components/GradientIcon";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
                   <DeleteModalContext>
                     <DeleteModal />
                     <NotiStackProvider>
+                      <GradientIcon />
                       {children}
                     </NotiStackProvider>
                   </DeleteModalContext>

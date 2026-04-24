@@ -1,6 +1,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primaryAppColor: #1976D2;
+  --secondaryAppColor: #AA19D2;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -1,7 +1,12 @@
 interface ITimesheet {
     title: string;
     date: string;
-    timein_schedule?: string | null;
+    time_schedule: {
+        in: string,
+        out: string,
+        break_time_hours: number,
+        work_hours: number
+    } | null;
     threshold_late: number;
     threshold_absent: number;
 }

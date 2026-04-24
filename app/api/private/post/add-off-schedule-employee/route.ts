@@ -28,7 +28,7 @@ export async function POST(req:NextRequest) {
             });
         }
 
-        //Retrieve employe details
+        //Retrieve employee details
         const [query2] = await db.query<RowDataPacket[]>(`
             SELECT e.employment_status, es.weekly_schedule_json 
                 FROM employees AS e JOIN employee_schedule AS es ON e.employee_id = es.employee_id 
@@ -45,7 +45,7 @@ export async function POST(req:NextRequest) {
             });
         }
 
-        const [result] = await db.query<ResultSetHeader>("INSERT INTO off_schedule_work_employees (employee_id, timesheet_id, time_in, time_out) VALUES(?, ?, ?, ?)", [formData.employee_id, formData.timesheet_id, formData.time_in, formData.time_out]);
+        const [result] = await db.query<ResultSetHeader>("INSERT INTO off_schedule_work_employees (employee_id, timesheet_id, time_in, time_out, break_time_hours, work_hours) VALUES(?, ?, ?, ?, ?, ?)", [formData.employee_id, formData.timesheet_id, formData.time_in, formData.time_out, formData.break_time_hours, formData.work_hours]);
 
         if(!result.affectedRows) {
             throw ({

@@ -14,6 +14,8 @@ import LeaveTypeSelector from '../LeaveTypeSelect';
 import { DatePicker } from '@mui/x-date-pickers';
 import { ILeaveTypesFromDB } from '@/app/types/leave-types-from-db';
 import { EmployeeSelectData } from '../EmployeeSelect';
+import playErrorSound from '../helpers/playErrorSound';
+import playNotifSound from '../helpers/playNotifSound';
 
 type EmployeeData = {
     employee_id: string;
@@ -111,12 +113,14 @@ const AddLeaveFormDialog: React.FC<IAddLeaveFormDialog> = ({
 
     const handleSubmit = async () => {
         if(Object.values({...formValues}).includes(null)) {
+            playErrorSound();
             return setValidationError("Unable to submit the form. Please make sure all required fields are filled out correctly and there are no errors.");
         }
 
         doApiRequest<TLeaveRequestFromDB>(
             "/api/private/post/add-leave",
             (data) => {
+                playNotifSound();
                 setValidationError(null);
                 setFormValues({employee: null, leaveType: null, date: "", status: "pending"});
                 if(onSuccess) onSuccess(data);
@@ -124,6 +128,7 @@ const AddLeaveFormDialog: React.FC<IAddLeaveFormDialog> = ({
             }, 
             (state) => setIsLoading(state),
             (error) => {
+                playErrorSound();
                 enqueueSnackbar(error.message, {variant: error.code == "IS_DAYOFF" || error.code == "NO_SCHED" || error.code == "INACTIVE_EMPLOYEE" || error.code == "NO_LEAVE_CREDITS_AVAILABLE"? "warning" : "error", anchorOrigin: {vertical: "top", horizontal: "center"}})
             },
             {
@@ -208,7 +213,7 @@ const AddLeaveFormDialog: React.FC<IAddLeaveFormDialog> = ({
                     <Button loading={isLoading} loadingPosition='end' onClick={onClose} autoFocus>
                         Cancel
                     </Button>
-                    <Button loading={isLoading} loadingPosition='end' variant='contained' onClick={handleSubmit} autoFocus>
+                    <Button sx={{background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)", color: "#fff"}} loading={isLoading} loadingPosition='end' variant='contained' onClick={handleSubmit} autoFocus>
                         Add
                     </Button>
                 </DialogActions>

@@ -10,7 +10,7 @@ export async function DELETE(req:NextRequest) {
     try {
         const formData = await req.json();
 
-        if(!(token && token.id)) throw ({
+        if(!(token && token.companyId && formData.id)) throw ({
             message: "Missing required data",
             code: "MISSING_DATA"
         });

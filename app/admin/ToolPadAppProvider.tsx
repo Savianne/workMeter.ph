@@ -3,7 +3,6 @@ import * as React from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { styled } from '@mui/material/styles';
 import { IStyledFC } from '@/app/types/IStyledFC';
-import Image from 'next/image';
 import { useSession } from "next-auth/react";
 import {
   type Navigation,
@@ -24,66 +23,80 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import DateRangeIcon from '@mui/icons-material/DateRange';
 import AirlineSeatIndividualSuiteIcon from '@mui/icons-material/AirlineSeatIndividualSuite';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import ViewListIcon from '@mui/icons-material/ViewList';
+import PaymentsIcon from '@mui/icons-material/Payments';
 import { socket } from '@/app/socket/socket';
 
 const NAVIGATION: Navigation = [
     {
         segment: 'admin/dashboard',
         title: 'Dashboard',
-        icon: <DashboardIcon />,
+        icon: <DashboardIcon sx={{fill: "url(#gradient)"}} />,
         
+    },
+    {
+        kind: 'divider',
+    },
+    {
+        kind: 'header',
+        title: 'Modules',
     },
     {
         segment: 'admin/employees',
         title: 'Employees',
-        icon: <GroupsIcon />,
-        // children: [
-        //     {
-        //         segment: '',
-        //         title: "All Employees",
-        //         icon: <GroupsIcon />,
-        //     },
-        //     {
-        //         segment: 'add-account',
-        //         title: "Add Employee",
-        //         icon: <PersonAddAlt1Icon />,
-        //     }
-        // ],
+        icon: <GroupsIcon sx={{fill: "url(#gradient)"}} />,
     },
     {
         segment: 'admin/scheduler',
         title: 'Scheduler',
-        icon: <DateRangeIcon />,
+        icon: <DateRangeIcon sx={{fill: "url(#gradient)"}} />,
         
     },
     {
         title: 'Leaves',
-        icon: <AirlineSeatIndividualSuiteIcon />,
+        icon: <AirlineSeatIndividualSuiteIcon sx={{fill: "url(#gradient)"}} />,
         children: [
             {
                 segment: 'admin/leaves',
                 title: "Leaves Table",
-                icon: <ViewListIcon />,
+                icon: <ViewListIcon sx={{fill: "url(#gradient)"}} />,
             },
             {
                 segment: 'admin/leave-types',
                 title: "Leave Type",
-                icon: <ViewListIcon />,
+                icon: <ViewListIcon sx={{fill: "url(#gradient)"}} />,
             }
         ],
     },
     {
         segment: 'admin/attendance',
         title: 'Attendance',
-        icon: <ScheduleIcon />,
+        icon: <ScheduleIcon sx={{fill: "url(#gradient)"}} />,
         
     },
     {
-        segment: 'admin/payroll',
+        segment: 'admin/contribution',
+        title: "Contributions",
+        icon: <PaymentsIcon sx={{fill: "url(#gradient)"}} />,
+    },
+    {
         title: 'Payroll',
-        icon: <ReceiptIcon />,
-        
+        icon: <ReceiptIcon sx={{fill: "url(#gradient)"}} />,
+        children: [
+            {
+                segment: 'admin/payroll/payroll-cycle',
+                title: "Payroll Cycle",
+                icon: <PublishedWithChangesIcon sx={{fill: "url(#gradient)"}} />,
+            },
+            {
+                segment: 'admin/payroll/run-payroll-cycle',
+                title: "Run Payroll Cycle",
+                icon: <AutorenewIcon sx={{fill: "url(#gradient)"}} />,
+            }
+        ],
     },
     {
         kind: 'divider',
@@ -95,7 +108,7 @@ const NAVIGATION: Navigation = [
     {
         segment: 'admin/manage-account',
         title: "Manage Account",
-        icon: <ManageAccountsIcon />,
+        icon: <ManageAccountsIcon sx={{fill: "url(#gradient)"}} />,
     }
 ];
 
@@ -143,6 +156,7 @@ export default function ToolpadAppProviderFC({
     children: React.ReactNode
 }) {
     const theme = useTheme();
+    
     const adminSession = useSession();
     const router = useCustomRouter();
 

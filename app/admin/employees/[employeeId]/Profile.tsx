@@ -15,6 +15,8 @@ import InternationalPhoneInput from "@/app/components/InternationalPhoneInput";
 import areObjectsMatching from "@/app/helpers/areObjectMatching";
 import ProfileSkeleton from "./ProfileSkeleton";
 import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker';
+import AvatarPicker from "@/app/components/AvatarPicker";
+import SchedulerTable from "./SchedulerTable";
 
 import { 
     Box,
@@ -42,6 +44,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import EditSquareIcon from '@mui/icons-material/EditSquare';
 import HourglassTopIcon from '@mui/icons-material/HourglassTop';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 
 const maritalStatuses = ["Single","Married","Divorced","Separated","Widowed","Annulled"];
 
@@ -162,6 +165,12 @@ const ProfileFC: React.FC<IProfileFC> = ({className, profileId}) => {
         salary: string | null
     }>({...inputValidationDefault});
 
+    const [avatarPickerDialog, setAvatarPickerDialog] = React.useState(false)
+
+    const MemoisedSchedulerTable = React.useMemo(() => {
+        return defaultData? <SchedulerTable employeeId={defaultData.employee_id} /> : ""
+    }, [defaultData]);
+
     const handleInputValidation = React.useCallback(
         debounce(async (scheme: () => Promise<any>, onInvalid: (error: string) => void, onValid: () => void) => {
             try {
@@ -253,26 +262,38 @@ const ProfileFC: React.FC<IProfileFC> = ({className, profileId}) => {
     return(
         <div className={className}>
             {
+                editData && defaultData? <AvatarPicker uid={editData?.employee_id} onUploadSuccess={(imageName) => {
+                    setDefaultData({...defaultData, display_picture: imageName});
+                    setEditData({...editData, display_picture: imageName});
+                }} onClose={() => setAvatarPickerDialog(false)} isOpen={avatarPickerDialog} /> : ""
+            }
+            
+            {
                 !(isLoading && defaultData === null && editData === null)? <>
                     <Paper elevation={2} className="top-container">
-                        <Avatar src="/images/avatar/users.png" variant="rounded" sx={{width: '100px', height: '100px', border: '2px solid #c1c1c1'}} />
+                        <div className="avatar-container">
+                            <div className="update-avatar-btn" onClick={() => setAvatarPickerDialog(true)}>
+                                <CameraAltIcon sx={{fontSize: '20px'}}/>
+                            </div>
+                            <Avatar src={editData && editData.display_picture? `/images/avatar/${editData.display_picture}` : undefined} variant="rounded" sx={{width: '100px', height: '100px', border: '2px solid #c1c1c1'}} />
+                        </div>
                         <div className="name">
                             <h2>{`${defaultData?.first_name} ${defaultData?.middle_name? defaultData?.middle_name[0].toUpperCase() + ".": "" } ${defaultData?.surname}`}</h2>
                             <h5>{defaultData?.designation}</h5>
                             <div className="chip">
                                 {
                                     defaultData?.employment_status.toLowerCase() == "regular"?
-                                    <Chip label={defaultData?.employment_status} color="primary" icon={<WorkspacePremiumIcon />} variant="outlined" /> : 
+                                    <Chip sx={{color: "#FFF"}} label={defaultData?.employment_status} color="primary" icon={<WorkspacePremiumIcon />} variant="outlined" /> : 
                                     defaultData?.employment_status.toLowerCase() == "contractual"?
-                                    <Chip icon={<HourglassTopIcon />} variant='outlined' label={defaultData?.employment_status} /> :
-                                    <Chip variant='outlined' label={defaultData?.employment_status} />
+                                    <Chip sx={{color: "#FFF"}} icon={<HourglassTopIcon />} variant='outlined' label={defaultData?.employment_status} /> :
+                                    <Chip sx={{color: "#FFF"}} variant='outlined' label={defaultData?.employment_status} />
                                 }
                                 {
                                     defaultData?.salary_basis == "monthly"?
-                                    <Chip label={`₱ ${defaultData?.salary} / Month`} /> :
+                                    <Chip sx={{color: "#FFF"}} label={`₱ ${defaultData?.salary} / Month`} /> :
                                     defaultData?.salary_basis == "daily"?
-                                    <Chip label={`₱ ${defaultData?.salary} / Daily`} /> :
-                                    <Chip label={`₱ ${defaultData?.salary} / hourly`} />
+                                    <Chip sx={{color: "#FFF"}} label={`₱ ${defaultData?.salary} / Daily`} /> :
+                                    <Chip sx={{color: "#FFF"}} label={`₱ ${defaultData?.salary} / hourly`} />
                                 }
                             </div>
                         </div>
@@ -641,7 +662,8 @@ const ProfileFC: React.FC<IProfileFC> = ({className, profileId}) => {
                                         
                                     </Box>
                                 </Box>
-                            </> : ""
+                            </> : 
+                            tab == "schedule"? MemoisedSchedulerTable : ""
                         }
                     </Box>
                 </> : <ProfileSkeleton />
@@ -657,12 +679,42 @@ const Profile = styled(ProfileFC)`
         flex: 0 1 100%;
         flex-wrap: wrap;
         gap: 15px;
+        min-width: 0;
 
         > .top-container {
             display: flex;
             flex: 0 1 100%;
             align-items: center;
             padding: 15px;
+            color: #fff;
+            min-width: 0;
+            background: var(--primaryAppColor);
+            background: linear-gradient(90deg,rgba(25, 118, 210, 1) 0%, var(--secondaryAppColor) 100%);
+
+            > .avatar-container {
+                position: relative;
+                display: flex;
+                width: fit-content;
+                height: fit-content;
+                /* align-items: center; */
+
+                > .update-avatar-btn {
+                    position: absolute;
+                    right: -10px;
+                    bottom: -10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    background-color: #131313b9;
+                    /* background-color: ${({theme}) => theme.palette.mode == "dark"? "#131313b9" : "#ffffffc3"}; */
+                    border: 1px solid ${({theme}) => theme.palette.divider};
+                    width: 35px;
+                    height: 35px;
+                    z-index: 10;
+                    cursor: pointer;
+                }
+            }
 
             > .name {
                 display: flex;
@@ -696,6 +748,7 @@ const Profile = styled(ProfileFC)`
         > .tab {
             display: flex;
             flex: 0 1 100%;
+            min-width: 0;
         }
 
         > .tab-content {
@@ -703,6 +756,7 @@ const Profile = styled(ProfileFC)`
             flex: 0 1 100%;
             margin-top: 20px;
             margin-bottom: 50px;
+             min-width: 0;
 
             > .information {
                 display: flex;

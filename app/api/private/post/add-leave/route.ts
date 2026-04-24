@@ -42,8 +42,6 @@ export async function POST(req:NextRequest) {
         
         const scheduleForThisDate = weeklySchedule[`${days[new Date(formData.date).getDay()]}`];
 
-        console.log(weeklySchedule)
-
         switch(scheduleForThisDate) {
             case "dayoff":
             throw ({

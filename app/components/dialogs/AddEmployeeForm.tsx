@@ -672,7 +672,7 @@ const AddEmployeeFormDialog:React.FC<IAddEmployeeFormDialog> = ({
                 }} autoFocus>
                     Clear form
                 </Button>
-                <Button loading={isOnSubmit} loadingPosition='end' variant='contained' onClick={handleSubmit} autoFocus>
+                <Button sx={{background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)", color: "#fff"}} loading={isOnSubmit} loadingPosition='end' variant='contained' onClick={handleSubmit} autoFocus>
                     Submit
                 </Button>
                 </DialogActions>

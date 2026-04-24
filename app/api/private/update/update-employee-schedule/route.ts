@@ -9,7 +9,9 @@ export async function POST(req:NextRequest) {
         day: string,
         time: {
             in: string,
-            out: string
+            out: string,
+            break_time_hours: number,
+            work_hours: number
         } | "dayoff" | null,
         employee_id: string
     }
@@ -48,15 +50,15 @@ export async function POST(req:NextRequest) {
         } else {
             const weekly_schedule = JSON.parse(rows[0].weekly_schedule_json);
 
-            if (formData.time === "dayoff") {
-            Object.entries(weekly_schedule as TWeeklySchedule).forEach(
-                ([key, value]) => {
-                if (value === "dayoff") {
-                    weekly_schedule[key as keyof TWeeklySchedule] = null;
-                }
-                }
-            );
-            }
+            // if (formData.time === "dayoff") {
+            //     Object.entries(weekly_schedule as TWeeklySchedule).forEach(
+            //         ([key, value]) => {
+            //             if (value === "dayoff") {
+            //                 weekly_schedule[key as keyof TWeeklySchedule] = null;
+            //             }
+            //         }
+            //     );
+            // }
 
             weekly_schedule[formData.day as keyof TWeeklySchedule] = formData.time;
 
@@ -66,7 +68,7 @@ export async function POST(req:NextRequest) {
             );
 
             const resObj: TResponseObject<TWeeklySchedule> = {
-            data: weekly_schedule,
+                data: weekly_schedule,
             };
 
             return Response.json(resObj);

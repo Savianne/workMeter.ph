@@ -68,27 +68,6 @@ const columns: Array<MRT_ColumnDef<EmployeeTableData>> = [
             </Box>
         ),
     },
-    // {
-    //     accessorFn: (row) => `${row.display_picture}`, //access nested data with dot notation
-    //     header: 'Picture',
-    //     enableColumnActions: false,
-    //     enableGlobalFilter: false,
-    //     enableColumnFilter: false,
-    //     enableSorting: false,
-    //     id: 'picture',
-    //     size: 20,
-    //     Cell: ({ row }) => (
-    //         <Box
-    //           sx={{
-    //             display: 'flex',
-    //             alignItems: 'center',
-    //             gap: '1rem',
-    //           }}
-    //         >
-    //           <Avatar src={row.original.display_picture? `/images/avatar/${row.original.display_picture}` : undefined} alt={row.original.first_name} />
-    //         </Box>
-    //     ),
-    // }, 
     {
         accessorFn: (originalRow) => (`${originalRow.first_name.toUpperCase()} ${originalRow.middle_name? originalRow.middle_name[0].toUpperCase() + "." : ""} ${originalRow.surname.toUpperCase()}`), //you should also get type hints for your accessorFn
         header: 'Employee',
@@ -132,13 +111,6 @@ const columns: Array<MRT_ColumnDef<EmployeeTableData>> = [
             <Chip icon={<CalendarMonthIcon />} variant='outlined' label={new Date(row.original.date_hired.toString()).toDateString()} />
         )
     },
-    // {
-    //     accessorKey: 'designation',
-    //     header: "Designation",
-    //     Cell: ({ row }) => (
-    //         <Chip icon={<BadgeIcon />} variant='outlined' label={row.original.designation} />
-    //     )
-    // },
     {
         accessorKey: 'salary',
         header: "Salary",
@@ -178,7 +150,7 @@ const EmployeesTable: React.FC = () => {
             },
         },
         renderTopToolbarCustomActions: () => (
-            <Button variant="contained" endIcon={<AddIcon />} onClick={() => setAddEmployeeFormOpenState(true)}>Add Employee</Button>
+            <Button sx={{color: "#fff", backgroundColor: "var(--primaryAppColor)", background: "linear-gradient(90deg,rgba(25, 118, 210, 1) 0%, var(--secondaryAppColor) 100%)"}} variant="contained" endIcon={<AddIcon />} onClick={() => setAddEmployeeFormOpenState(true)}>Add Employee</Button>
         ),
         enableRowActions: true,
         renderRowActionMenuItems: ({ closeMenu, row }) => [
@@ -226,6 +198,7 @@ const EmployeesTable: React.FC = () => {
             "/api/private/get/get-employees",
             (data) => {
                 setData([...data]);
+                console.log(data)
             },
             (state) => setIsLoading(state),
             (error) => {

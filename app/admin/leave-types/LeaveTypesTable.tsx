@@ -7,6 +7,8 @@ import AddLeaveTypeFormDialog from '@/app/components/dialogs/AddLeaveTypeForm';
 import { object, number, string, ValidationError } from 'yup';
 import debounce from "lodash/debounce";
 import useDeleteModal from '@/app/components/DeleteModal/useDeleteModal';
+import playErrorSound from '@/app/components/helpers/playErrorSound';
+import playNotifSound from '@/app/components/helpers/playNotifSound';
 
 import {
     MaterialReactTable,
@@ -141,7 +143,7 @@ const LeaveTypesTable: React.FC = () => {
         muiTableHeadCellProps: {align: 'center'},
         muiTableBodyCellProps: {align: 'center'},
         renderTopToolbarCustomActions: () => (
-            <Button variant="contained" endIcon={<AddIcon />} onClick={() => setAddLeaveTypeState(true)}>Add Leave Type</Button>
+            <Button sx={{color: "#fff", backgroundColor: "var(--primaryAppColor)", background: "linear-gradient(90deg,rgba(25, 118, 210, 1) 0%, var(--secondaryAppColor) 100%)"}} variant="contained" endIcon={<AddIcon />} onClick={() => setAddLeaveTypeState(true)}>Add Leave Type</Button>
         ),
         enableRowActions: true,
         renderRowActionMenuItems: ({ closeMenu, row }) => [
@@ -155,12 +157,18 @@ const LeaveTypesTable: React.FC = () => {
                         doApiRequest<{success: boolean}>(
                             "/api/private/delete/delete-leave-type",
                             (resdata) => { 
+                                playNotifSound();
+                                enqueueSnackbar("Delete Success", {variant: "default", anchorOrigin: {horizontal: "center", vertical: "top"}})
                                 const newData = [...data.filter(item => item.id != row.original.id)];
                                 setData(newData);
                                 res(resdata);
                             },
                             (state) => {/*I love you*/},
-                            (error) => rej(error.message),
+                            (error) => {
+                                playErrorSound();
+                                enqueueSnackbar("Delete failed", {variant: "default", anchorOrigin: {horizontal: "center", vertical: "top"}})
+                                rej(error.message)
+                            },
                             {
                                 method: "DELETE",
                                 body: JSON.stringify({id: row.original.id})
@@ -208,12 +216,16 @@ const LeaveTypesTable: React.FC = () => {
                             ...values,
                         };
         
+                        playNotifSound();
                         setData(updatedData);
                         enqueueSnackbar("Edit Success", {variant: "default", anchorOrigin: {vertical: "top", horizontal: "center"}})
                         table.setEditingRow(null);
                     },
                     (state) => setIsSaving(state),
-                    (error) => enqueueSnackbar(error.message, {variant: "error", anchorOrigin: {vertical: "top", horizontal: "center"}}),
+                    (error) => {
+                        playErrorSound();
+                        enqueueSnackbar(error.message, {variant: "error", anchorOrigin: {vertical: "top", horizontal: "center"}})
+                    },
                     {
                         method: "POST",
                         body: JSON.stringify({...values, id: row.original.id})
@@ -221,6 +233,7 @@ const LeaveTypesTable: React.FC = () => {
                 )
             }
             catch(err) {
+                playErrorSound()
                 enqueueSnackbar("Unable to submit the form. Please make sure all required fields are filled out correctly and there are no errors.", {variant: "default", anchorOrigin: {vertical: "top", horizontal: "center"}})
             }
     

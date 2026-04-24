@@ -14,7 +14,11 @@ export async function GET(req: NextRequest) {
             FROM company_employees AS ce 
                 JOIN employees AS e ON ce.employee_id = e.employee_id 
                 LEFT JOIN employee_schedule AS es ON es.employee_id = e.employee_id
-            WHERE ce.company_id = ?
+            WHERE ce.company_id = ? 
+            AND (e.employment_status = 'Regular' 
+                OR e.employment_status = 'Probationary' 
+                OR e.employment_status = 'Contractual' 
+                OR e.employment_status = 'Casual');
         `, [token?.companyId])
     
 

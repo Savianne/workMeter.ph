@@ -18,7 +18,7 @@ export async function POST(req:NextRequest) {
 
         console.log(formData)
 
-        if(!(token && token.companyId && formData.employee_id && formData.timesheet_id && formData.timesheet_date && formData.source && formData.timeIn && formData.timeOut)) throw ({
+        if(!(token && token.companyId && formData.employee_id && formData.timesheet_id && formData.timesheet_date && formData.source && formData.timeIn)) throw ({
             message: "Missing required data",
             code: "MISSING_DATA"
         });
@@ -42,15 +42,21 @@ export async function POST(req:NextRequest) {
                 code: "INACTIVE_EMPLOYEE"
             });
         }
-            
+        
+        const [timesheetTimeSchedule] = await db.query<RowDataPacket[]>("SELECT time_schedule FROM timesheet WHERE id = ?", [formData.timesheet_id]);
+        
+        const timesheetDate = new Date(formData.timesheet_date)
+
         const weeklySchedule = JSON.parse(query1[0].weekly_schedule_json);
         
-        const scheduleForThisDate = weeklySchedule[`${days[new Date(formData.timesheet_date).getDay()]}`];
+        const scheduleForThisDate = weeklySchedule[`${days[timesheetDate.getDay()]}`];
 
         let off_schedule_constraint = null;
-
+        let isDayOff = false;
+        const scheduledTime: {in: string, out: string, break_time_hours: number} = timesheetTimeSchedule.length && timesheetTimeSchedule[0].time_schedule? JSON.parse(timesheetTimeSchedule[0].time_schedule) : scheduleForThisDate && scheduleForThisDate !== "dayoff"? scheduleForThisDate : {in: "07:00:00", out: "16:00:00", break_time_hours: 0};
+       
         if(scheduleForThisDate == null || scheduleForThisDate == "dayoff") {
-            const [query] = await db.query<RowDataPacket[]>("SELECT id FROM off_schedule_work_employees WHERE employee_id = ? AND timesheet_id = ?", [formData.employee_id, formData.timesheet_id]);
+            const [query] = await db.query<RowDataPacket[]>("SELECT id, break_time_hours, time_in, time_out FROM off_schedule_work_employees WHERE employee_id = ? AND timesheet_id = ?", [formData.employee_id, formData.timesheet_id]);
 
             if(query.length <= 0) {
                 switch(scheduleForThisDate) {
@@ -66,11 +72,18 @@ export async function POST(req:NextRequest) {
                     });
                 }
             } else {
-                off_schedule_constraint = query[0].id
+                off_schedule_constraint = query[0].id;
+                isDayOff = scheduleForThisDate == "dayoff";
+                scheduledTime.in = query[0].time_in;
+                scheduledTime.out = query[0].time_out;
+                scheduledTime.break_time_hours =query[0].break_time_hours;
+                // if(!(timesheetTimeSchedule.length && timesheetTimeSchedule[0].time_schedule)) {
+                //     scheduledTime.in = query[0].time_in;
+                //     scheduledTime.out = query[0].time_out
+                // }
             }
         } 
 
-        const timesheetDate = new Date(formData.timesheet_date)
         const date = `${timesheetDate.getFullYear()}-${timesheetDate.getMonth() + 1}-${timesheetDate.getDate()}`;
 
         const [query] = await db.query<RowDataPacket[]>("SELECT COUNT(*) AS count FROM employee_leave_request WHERE employee_id = ? AND date = ? AND status = ?", [formData.employee_id, date, "approved"]);
@@ -82,16 +95,18 @@ export async function POST(req:NextRequest) {
             });
         }
 
-        const [query2] = await db.query<RowDataPacket[]>("SELECT COUNT(*) AS count FROM attendance_time_log WHERE employee_id = ? AND timesheet_id = ?", [formData.employee_id, formData.timesheet_id]);
+        const dateTimeIn = new Date(`${timesheetDate.getFullYear()}-${timesheetDate.getMonth() + 1}-${timesheetDate.getDate()} ${scheduledTime.in}`);
+        const dateTimeOut = new Date(`${timesheetDate.getFullYear()}-${timesheetDate.getMonth() + 1}-${timesheetDate.getDate()} ${scheduledTime.out}`);
 
-        if(query2[0].count > 0) {
-            throw ({
-                message: "Cannot record attendance. The selected employee already has a time log for this date.",
-                code: "EMPLOYEE_HAS_TIMELOG"
-            });
+        const dateTimeInHour = dateTimeIn.getHours();
+        const dateTimeOutHour = dateTimeOut.getHours();
+
+        if(dateTimeInHour >= 12 && dateTimeInHour <= 23 && dateTimeOutHour >= 0 && dateTimeOutHour <= 11) {
+            const hour = dateTimeOutHour + 24;
+            dateTimeOut.setHours(hour);
         }
 
-        const [result] = await db.query<ResultSetHeader>("INSERT INTO attendance_time_log(company_id, employee_id, timesheet_id, source, time_in, time_out, off_sched_constraint) VALUES(?, ?, ?, ?, ?, ?, ?)", [token.companyId, formData.employee_id, formData.timesheet_id, formData.source, formData.timeIn, formData.timeOut, off_schedule_constraint]);
+        const [result] = await db.query<ResultSetHeader>("INSERT INTO attendance_time_log(company_id, employee_id, timesheet_id, source, time_in, time_out, is_dayoff, scheduled_time_in, scheduled_time_out, break_time_hours, off_sched_constraint) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [token.companyId, formData.employee_id, formData.timesheet_id, formData.source, formData.timeIn, formData.timeOut || null, isDayOff, dateTimeIn, dateTimeOut, scheduledTime.break_time_hours, off_schedule_constraint]);
 
         if(!result.affectedRows) {
             throw ({
@@ -115,8 +130,20 @@ export async function POST(req:NextRequest) {
     catch(err:any) {
         console.log(err)
         if(err.message && err.code) {
+            let error:TResponseError;
+            switch(err.code) {
+                case "ER_DUP_ENTRY":
+                    error = {
+                        message: "Cannot record attendance. The selected employee already has a time log for this date.",
+                        code: "EMPLOYEE_HAS_TIMELOG"
+                    }
+                    break;
+                default:
+                    error = {...err}
+            }
+
             const resObj: TResponseObject<null> = {
-                error: err,
+                error: error,
                 data: null
             }
             return Response.json(resObj);
@@ -129,6 +156,6 @@ export async function POST(req:NextRequest) {
                 data: null
             }
             return Response.json(resObj);
-        }
+        }  
     }
 }

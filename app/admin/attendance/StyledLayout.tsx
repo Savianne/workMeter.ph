@@ -61,7 +61,7 @@ const StyledLayoutFC:React.FC<IStyledFC> = ({className, children}) => {
             <div className="head">
                 <Box className="aside">
                     <h4>Timesheets</h4>
-                    <Button startIcon={<AddIcon />} size='small' sx={{marginLeft: 'auto', marginRight: '30px'}} onClick={() => setCreateTmesheetState(true)}>Add Timesheet</Button>
+                    <Button startIcon={<AddIcon />} variant='contained' size='small' sx={{marginLeft: 'auto', marginRight: '30px'}} onClick={() => setCreateTmesheetState(true)}>Add Timesheet</Button>
                     <div className="toggle-btn">
                         <IconButton onClick={() => setAsideOpen(!asideOpen)}>
                             {
@@ -110,7 +110,7 @@ const StyledLayoutFC:React.FC<IStyledFC> = ({className, children}) => {
                             timesheets.length? <>
                             {
                                 timesheets.map(timesheet => (
-                                    <TimesheetItem active={!!(activeTimesheet && activeTimesheet.id == timesheet.id)} key={timesheet.id} 
+                                    <TimesheetItem navOpen={!!(activeTimesheet && activeTimesheet.id == timesheet.id)} key={timesheet.id} 
                                     timesheetData={timesheet} 
                                     onClick={() => {
                                         setActiveTimesheet(timesheet);

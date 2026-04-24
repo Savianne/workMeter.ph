@@ -3,7 +3,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import doApiRequest from '../helpers/doApiRequest';
 import { enqueueSnackbar } from 'notistack';
-import { Avatar, Box, InputAdornment } from '@mui/material';
+import { Avatar, Box, Chip } from '@mui/material';
 
 export type EmployeeSelectData = {
     employee_id: string;
@@ -55,9 +55,41 @@ const EmployeeSelector: React.FC<{onChange: (e:EmployeeSelectData | null) => voi
         value={value}
         onChange={handleOptionChange}
         renderInput={(params) => (
-            <TextField 
-            required={required} {...params} fullWidth label="Select Employee" variant="outlined" />
+            <TextField
+            {...params}
+            required={required}
+            label="Select Employee"
+            InputProps={{
+                ...params.InputProps,
+                startAdornment: value ? (
+                    <Avatar alt={value.surname} src={`/images/avatar/${value.display_picture}`} />
+                ) : null,
+            }}
+            />
         )}
+        renderTags={(selected, getTagProps) =>
+            selected.map((option, index) => (
+                <Chip
+                    {...getTagProps({ index })}
+                    key={option.employee_id}
+                    avatar={<Avatar alt={option.surname} src={`/images/avatar/${option.display_picture}`} />}
+                    label={`${option.first_name.toUpperCase()} ${option.middle_name? option.middle_name[0].toUpperCase() + "." : ""} ${option.surname.toUpperCase()} ${option.ext_name? option.ext_name.toUpperCase() : ""}`}
+                    sx={{
+                        background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)",
+                        color: "#fff",
+                        fontWeight: "bold",
+                        borderRadius: "8px",
+                        "& .MuiChip-deleteIcon": {
+                            color: "#fff",
+                            "&:hover": {
+                                color: "#ffffffc1",
+                            },
+                        },
+                    }}
+                    variant="filled"
+                />
+            ))
+        }
         />
 
         );

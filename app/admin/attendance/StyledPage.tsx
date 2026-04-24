@@ -1,5 +1,6 @@
 "use client";
 import { styled, css } from '@mui/material/styles';
+import Image from 'next/image';
 import React from "react";
 import { IStyledFC } from '@/app/types/IStyledFC';
 import ITimesheet, { ITimesheetFromDB } from '@/app/types/timesheet';
@@ -15,6 +16,8 @@ import dayjs, { Dayjs } from 'dayjs';
 import TimeLogTable from './TimeLogTable';
 import OffScheduleWorkEmployees from '@/app/components/dialogs/OffScheduleWorksEmployees';
 import ManualTimeLogForm from '@/app/components/dialogs/ManualTimeLogForm';
+import useDeleteModal from '@/app/components/DeleteModal/useDeleteModal';
+import SkeletonTimesheet from './SkeletonTimesheet';
 
 import { 
     Box,
@@ -44,6 +47,10 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import EventIcon from '@mui/icons-material/Event';
 import MoreTimeIcon from '@mui/icons-material/MoreTime';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
+import PeopleIcon from '@mui/icons-material/People';
+import DeleteIcon from '@mui/icons-material/Delete';
+import playErrorSound from '@/app/components/helpers/playErrorSound';
+import playNotifSound from '@/app/components/helpers/playNotifSound';
 
 const LoaderContainer = styled(Box)`
     && {
@@ -132,6 +139,7 @@ export const AttendancePageProvider = React.createContext<IAttendancePageContex 
 const StyledPageFC:React.FC<IStyledFC> = ({className}) => {
     const ref = React.useRef<HTMLDivElement>(null);
     const headRef = React.useRef<HTMLDivElement>(null);
+    const deleteModal = useDeleteModal();
     const [createTimesheetState, setCreateTmesheetState] = React.useState(false);
     const [adjustTimesheetState, setAdjustTimesheetState] = React.useState(false);
     const [offScheduleEmployeesState, setoffScheduleEmployeesState] = React.useState(false);
@@ -139,66 +147,111 @@ const StyledPageFC:React.FC<IStyledFC> = ({className}) => {
     const [asideOpen, setAsideOpen] = React.useState(true);
     const [activeTimesheet, setActiveTimesheet] = React.useState<ITimesheetFromDB | null>(null);
     const [loadingTimesheets, setLoadingTimesheets] = React.useState(true);
+    const [deletingTimesheets, setDeletingTimesheets] = React.useState(false);
     const [loadedTimesheets, setLoadedTimesheets] = React.useState<ITimesheetFromDB[]>([]);
     const [onFullScreenMode, setOnFullscreenMode] = React.useState(false);
     const [dateFilter, setDateFilter] = React.useState<string | null>(null);
     const [pagination, setPagination] = React.useState<{
-        page: number,
         limit: number,
         total: number,
-        totalPages: number,
         hasNext: boolean,
     } | null>(null);
+    // const [pagination, setPagination] = React.useState<{
+    //     page: number,
+    //     limit: number,
+    //     total: number,
+    //     totalPages: number,
+    //     hasNext: boolean,
+    // } | null>(null);
 
     const toggleFullscreen = () => {
         setOnFullscreenMode(!onFullScreenMode);
     };
 
-    const handleNext = (page: number, dateFilter: string | null) => {
+    const handleNext = (firstItemId: string, lastItemId: string, limit: number, dateFilter: string | null) => {
         doApiRequest<{
-            page: number,
             limit: number,
             total: number,
-            totalPages: number,
-            hasNext: boolean,
             pageData: ITimesheetFromDB[],
         }>(
-            "/api/private/get/get-timesheets",
+            dateFilter? "/api/private/get/get-timesheet-by-date": "/api/private/get/get-timesheets",
             (data) => {
-                setLoadedTimesheets([...loadedTimesheets, ...data.pageData]);
-                setPagination({...data});
+                const sortData = [...loadedTimesheets, ...data.pageData].sort((a, b) => Number(b.id) - Number(a.id));
+                const unique = new Map<string,  ITimesheetFromDB>();
+                sortData.forEach(item => {
+                    unique.set(String(item.id), item);
+                });
+
+                const merged = Array.from(unique.values());
+
+                setLoadedTimesheets(merged);
+                setPagination({limit: data.limit, total: data.total, hasNext: data.total > merged.length});
             },
             (state) => {},
             (error) => enqueueSnackbar(error.message, {variant: "error", anchorOrigin: {vertical: "top", horizontal: "center"}}),
             {
                 method: "POST",
-                body: JSON.stringify({page, date_filter: dateFilter})
+                body: JSON.stringify({date_filter: dateFilter, firstItemId, lastItemId, limit})
             }
         )
     }
 
-    React.useEffect(() => {
+    const handleDeleteTimesheet = () => {
+        deleteModal(activeTimesheet?.title as string, () => {
+            return new Promise<{success: boolean}>((resolve, reject) => {
+                doApiRequest(
+                    "/api/private/delete/delete-timesheet",
+                    (data) => {
+                        playNotifSound();
+                        enqueueSnackbar(`Deleted 1 item:  ${activeTimesheet?.title}`, {variant: "default", anchorOrigin: {vertical: "top", horizontal: "center"}})
+                        const newTimesheetList = loadedTimesheets.filter(item => item.id !== activeTimesheet?.id);
+                        setLoadedTimesheets([...newTimesheetList]);
+                        if(newTimesheetList.length) {
+                            setActiveTimesheet(newTimesheetList[0]);
+                        }
+                        resolve({success: true})
+                    },
+                    (loading) => setDeletingTimesheets(loading),
+                    (error) => {
+                        playErrorSound()
+                        enqueueSnackbar(error.message, {variant: "error", style: {zIndex: 10000}, anchorOrigin: {vertical: "top", horizontal: "center"}})
+                        reject({success: false})
+                    },
+                    {
+                        method: "DELETE",
+                        body: JSON.stringify({timesheet_id: activeTimesheet?.id})
+                    }
+                )
+            })
+        })
+    }
+
+    const handleGetInitList = () => {
         setActiveTimesheet(null);
         doApiRequest<{
-            page: number,
             limit: number,
             total: number,
-            totalPages: number,
-            hasNext: boolean,
             pageData: ITimesheetFromDB[],
         }>(
-            dateFilter? "/api/private/get/filter-timesheets-by-date": "/api/private/get/get-timesheets",
+            dateFilter? "/api/private/get/get-timesheet-by-date-init-list": "/api/private/get/get-timesheet-init-list",
             (data) => {
                 setLoadedTimesheets([...data.pageData]);
-                setPagination({...data});
+                setPagination({limit: data.limit, total: data.total, hasNext: data.total > data.pageData.length});
+                if(data.pageData.length) {
+                    setActiveTimesheet(data.pageData[0])
+                }
             },
             (state) => setLoadingTimesheets(state),
             (error) => enqueueSnackbar(error.message, {variant: "error", anchorOrigin: {vertical: "top", horizontal: "center"}}),
             {
                 method: "POST",
-                body: JSON.stringify({page: 1, date_filter: dateFilter})
+                body: JSON.stringify({limit: 10, date_filter: dateFilter})
             }
         )
+    }
+
+    React.useEffect(() => {
+        handleGetInitList();
     }, [dateFilter]);
 
     return(
@@ -207,7 +260,7 @@ const StyledPageFC:React.FC<IStyledFC> = ({className}) => {
             setTimesheets: (newList) => setLoadedTimesheets(newList),
             activeTimesheet,
         }}>
-            <Paper ref={ref} className={className} component={'div'} 
+            <Box ref={ref} className={className} component={'div'} 
             sx={
                 onFullScreenMode? 
                 {
@@ -223,23 +276,19 @@ const StyledPageFC:React.FC<IStyledFC> = ({className}) => {
             }>
                 <CreateTimesheetForm container={headRef.current} state={createTimesheetState} onClose={() => setCreateTmesheetState(false)} 
                     onSuccess={(newTimesheet) => {
-                        if(pagination && pagination.hasNext == false) {
-                            setLoadedTimesheets([...loadedTimesheets, newTimesheet]);
-                        } 
+                        handleGetInitList();
                     }}/>
-                <div className="head" ref={headRef}>
-                    <Box className="aside">
-                        <h4>Timesheets</h4>
-                        <Button startIcon={<AddIcon />} size='small' sx={{marginLeft: 'auto', marginRight: '30px'}} onClick={() => setCreateTmesheetState(true)}>Add Timesheet</Button>
-                        <div className="toggle-btn">
+                <Paper className="head" ref={headRef}>
+                    {/* <div className="toggle-btn">
+                        <Tooltip title={asideOpen? "Close Sidebar" : "Open Sidebar"}>
                             <IconButton onClick={() => setAsideOpen(!asideOpen)}>
                                 {
-                                    asideOpen? <MenuOpenIcon /> : <MenuIcon />
+                                    asideOpen? <MenuIcon /> : <MenuOpenIcon />
                                 }
                             </IconButton>
-                        </div>
-                    </Box>
-                    <ServerClock sx={{marginLeft: '50px'}}/>
+                        </Tooltip>
+                    </div> */}
+                    <ServerClock sx={{marginLeft: '20px'}}/>
                     <Box sx={{marginLeft: "auto"}}>
                         <DatePicker label="Filter by date" 
                         value={dateFilter? dayjs(dateFilter) : null}
@@ -266,70 +315,112 @@ const StyledPageFC:React.FC<IStyledFC> = ({className}) => {
                             },
                         }}/>
                     </Box>
-                    <div className="toggle-fullscreen-btn">
+                    <div className="toggle-btn">
+                        <Tooltip title={asideOpen? "Close Sidebar" : "Open Sidebar"}>
+                            <IconButton onClick={() => setAsideOpen(!asideOpen)}>
+                                {
+                                    asideOpen? <MenuIcon sx={{fill: "url(#gradient)"}} /> : <MenuOpenIcon sx={{fill: "url(#gradient)"}} />
+                                }
+                            </IconButton>
+                        </Tooltip>
+                    </div>
+                    {/* <div className="toggle-fullscreen-btn">
                         <Tooltip title="Toogle Full-screen">
                             <IconButton onClick={() => toggleFullscreen()}>
                                 <FullscreenIcon />
                             </IconButton>
                         </Tooltip>
-                    </div>
-                </div>
+                    </div> */}
+                </Paper>
                 <div className="body">
                     
-                    <div className="scrollable-container">
+                    <Paper className="scrollable-container">
                         {
-                            activeTimesheet? <>
-                            <ManualTimeLogForm timesheet={activeTimesheet} container={headRef.current} state={manualTimeLogDialogState} onClose={() => setManualTimeLogDialogState(false)} />
-                            <OffScheduleWorkEmployees container={headRef.current} state={offScheduleEmployeesState} onClose={() => setoffScheduleEmployeesState(false)} timesheet={activeTimesheet} />
-                            <AdjustTimesheetThresholdForm 
-                            container={headRef.current}
-                            state={adjustTimesheetState} 
-                            onClose={() =>  setAdjustTimesheetState(false)} 
-                            timesheet={activeTimesheet}
-                            onSuccess={(updatedTimesheetThreshold) => {
-                                console.log(updatedTimesheetThreshold)
-                                setLoadedTimesheets(loadedTimesheets.map(item => item.id == activeTimesheet.id? ({...activeTimesheet, ...updatedTimesheetThreshold}) : item));
-                                setActiveTimesheet({...activeTimesheet, ...updatedTimesheetThreshold});
-                            }}/>
-                            <Box className="content-header">
-                                <Box className="title">
-                                    <ManageTimesheetName 
-                                    timesheet={activeTimesheet}
-                                    onEditSuccess={(newName) => {
-                                        setLoadedTimesheets(loadedTimesheets.map(item => item.id == activeTimesheet.id? ({...item, title: newName}) : item));
-                                        setActiveTimesheet({...activeTimesheet, title: newName})
-                                    }}/>
-                                    <Chip size='small' sx={{width: "fit-content"}} color='primary' icon={<EventIcon />} label={new Date(activeTimesheet?.date).toDateString()} />
-                                </Box>
-                                <Box className="action-btn-group">
-                                    <Tooltip title="Off-Schedule Work">
-                                        <IconButton size="large" onClick={() => setoffScheduleEmployeesState(true)}>
-                                            <EventBusyIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Divider orientation='vertical' sx={{height: "30px"}} />
-                                    <Tooltip title="Manual Time Log">
-                                        <IconButton aria-label="delete" size="large" onClick={() => setManualTimeLogDialogState(true)}>
-                                            <MoreTimeIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Divider orientation='vertical' sx={{height: "30px"}} />
-                                    <Tooltip title="Timesheet Settings">
-                                        <IconButton aria-label="delete" size="large" onClick={() => setAdjustTimesheetState(true)}>
-                                            <TuneIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                </Box>
-                            </Box>
-                            <Box className="content-body">
-                                {/* <h4 style={{flex: '0 1 100%', textAlign: 'center', margin: '20px 10px'}}>Time log</h4> */}
-                                <TimeLogTable />
-                            </Box>
-                            </> 
-                            : "Attendance Analytics"
+                            loadingTimesheets? <>
+                                <SkeletonTimesheet />
+                            </> : <>
+                                {
+                                    loadedTimesheets.length? <>
+                                        {
+                                            activeTimesheet? <>
+                                            <ManualTimeLogForm timesheet={activeTimesheet} container={headRef.current} state={manualTimeLogDialogState} onClose={() => setManualTimeLogDialogState(false)} />
+                                            <OffScheduleWorkEmployees container={headRef.current} state={offScheduleEmployeesState} onClose={() => setoffScheduleEmployeesState(false)} timesheet={activeTimesheet} />
+                                            <AdjustTimesheetThresholdForm 
+                                            container={headRef.current}
+                                            state={adjustTimesheetState} 
+                                            onClose={() =>  setAdjustTimesheetState(false)} 
+                                            timesheet={activeTimesheet}
+                                            onSuccess={(updatedTimesheetThreshold) => {
+                                                console.log(updatedTimesheetThreshold);
+                                                setLoadedTimesheets(loadedTimesheets.map(item => item.id == activeTimesheet.id? ({...activeTimesheet, ...updatedTimesheetThreshold}) : item));
+                                                setActiveTimesheet({...activeTimesheet, ...updatedTimesheetThreshold});
+                                            }}/>
+                                            <Box className="content-header">
+                                                <Box className="title">
+                                                    <ManageTimesheetName 
+                                                    timesheet={activeTimesheet}
+                                                    onEditSuccess={(newName) => {
+                                                        setLoadedTimesheets(loadedTimesheets.map(item => item.id == activeTimesheet.id? ({...item, title: newName}) : item));
+                                                        setActiveTimesheet({...activeTimesheet, title: newName})
+                                                    }}/>
+                                                    <Chip size='small' sx={{width: "fit-content", color: "#FFF", background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)"}} color='primary' icon={<EventIcon />} label={new Date(activeTimesheet?.date).toDateString()} />
+                                                </Box>
+                                                <Box className="action-btn-group">
+                                                    <Tooltip title="Delete this Timesheet">
+                                                        <IconButton loading={deletingTimesheets} color='error' size="large" onClick={handleDeleteTimesheet}>
+                                                            <DeleteIcon  />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Divider orientation='vertical' sx={{height: "30px"}} />
+                                                    <Tooltip title="Off-Schedule Work">
+                                                        <IconButton size="large" onClick={() => setoffScheduleEmployeesState(true)}>
+                                                            <PeopleIcon sx={{ fill: "url(#gradient)" }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Divider orientation='vertical' sx={{height: "30px"}} />
+                                                    <Tooltip title="Manual Time Log">
+                                                        <IconButton aria-label="delete" size="large" onClick={() => setManualTimeLogDialogState(true)}>
+                                                            <MoreTimeIcon sx={{ fill: "url(#gradient)" }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Divider orientation='vertical' sx={{height: "30px"}} />
+                                                    <Tooltip title="Timesheet Settings">
+                                                        <IconButton aria-label="delete" size="large" onClick={() => setAdjustTimesheetState(true)}>
+                                                            <TuneIcon sx={{ fill: "url(#gradient)" }}/>
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </Box>
+                                            <Box className="content-body">
+                                                <TimeLogTable />
+                                            </Box>
+                                            </> 
+                                            : ""
+                                        }
+                                    </> : <div className="no-data">
+                                        <h1>No records available.</h1>
+                                        <h3>Create a timesheet to begin attendance tracking.</h3>
+                                        <div className="btn-container">
+                                            <Button startIcon={<AddIcon />} size='small' onClick={() => setCreateTmesheetState(true)} variant='contained'>Add Timesheet</Button>
+                                        </div>
+                                    </div>
+                                }
+                            </>
                         }
-                    </div>
-                    <aside className='menu-list' style={{width: asideOpen? '300px' : "52px"}}>
+                    </Paper>
+                    <Paper className='menu-list' style={{width: asideOpen? '300px' : "75px"}}>
+                        <Box className="menu-header">
+                            {
+                                asideOpen? <>
+                                    <h4>Timesheets</h4>
+                                    <Button startIcon={<AddIcon />} variant="contained" size='small' sx={{marginLeft: 'auto', marginRight: '10px', background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)", color: "#FFF"}} onClick={() => setCreateTmesheetState(true)}>Add Timesheet</Button>
+                                </> : <Tooltip title="Create new timesheet">
+                                    <IconButton onClick={() => setCreateTmesheetState(true)}>
+                                        <AddIcon sx={{fill: "url(#gradient)"}}/>
+                                    </IconButton>
+                                </Tooltip>
+                            }
+                        </Box>
                         {
                             loadingTimesheets? <>
                                 <SkeletonAsideItem />
@@ -354,19 +445,19 @@ const StyledPageFC:React.FC<IStyledFC> = ({className}) => {
                                     ))
                                 }
                                 {
-                                    pagination? pagination.hasNext? <InfiniteScroll loadMore={() => handleNext(pagination.page + 1, dateFilter)}/> : <Typography sx={{textAlign: "center", flex: "0 1 100%", padding: "15px", fontSize: "11px"}}>End of list</Typography> : ""
+                                    pagination? pagination.hasNext? <InfiniteScroll loadMore={() => handleNext(String(loadedTimesheets[0].id), String(loadedTimesheets[loadedTimesheets.length - 1].id), pagination.limit, dateFilter)}/> : <Typography sx={{textAlign: "center", flex: "0 1 100%", padding: "15px", fontSize: "11px"}}>End of list</Typography> : ""
                                 }
                                 
                                 </> : <div className='no-data'>
                                     <SentimentVeryDissatisfiedIcon />
-                                    <p>No data to Display</p>
+                                    <p style={{textAlign: "center"}}>No data to Display</p>
                                 </div>
                             }
                             </>
                         }
-                    </aside>
+                    </Paper>
                 </div>
-            </Paper>
+            </Box>
         </AttendancePageProvider.Provider>
     )
 }   
@@ -376,6 +467,7 @@ const StyledPage = styled(StyledPageFC)`
         display: flex;
         flex: 0 1 100%;
         min-width: 0;
+        gap: 15px;
         flex-wrap: wrap;
         transition: 400ms ease-in-out;
 
@@ -384,29 +476,15 @@ const StyledPage = styled(StyledPageFC)`
             flex: 0 1 100%;
             height: 70px;
             align-items: center;
-            border-bottom: 1px solid ${({theme}) => theme.palette.divider};
+            /* border-bottom: 1px solid ${({theme}) => theme.palette.divider}; */
 
-            > .aside {
-                position: relative;
-                display: flex;
-                align-items: center;
-                width: 300px;
-                height: 100%;
-                border-right: 1px solid ${({theme}) => theme.palette.divider};
-
-                > h4 {
-                    margin-left: 15px;
-                }
-
-                > .toggle-btn {
-                    width: fit-content;
-                    height: fit-content;
-                    position: absolute;
-                    right: -20px;
-                    border-radius: 50%;
-                    border: 1px solid ${({theme}) => theme.palette.divider};
-                    background-color: ${({theme}) => theme.palette.background.default};
-                }
+            > .toggle-btn {
+                width: fit-content;
+                height: fit-content;
+                margin: 0 20px;
+                border-radius: 50%;
+                border: 1px solid ${({theme}) => theme.palette.divider};
+                background-color: ${({theme}) => theme.palette.background.default};
             }
 
             > .toggle-fullscreen-btn {
@@ -424,6 +502,7 @@ const StyledPage = styled(StyledPageFC)`
             display: flex;
             flex: 0 1 100%;
             min-width: 0;
+            gap: 15px;
             overflow-y: auto;
             height: calc(100% - 70px);
 
@@ -432,12 +511,12 @@ const StyledPage = styled(StyledPageFC)`
                 top: 0;
                 display: flex;
                 width: 300px;
-                height: 100%;
+                height: calc(100% - 15px);
                 overflow-y: auto;
                 overflow-x: hidden;
                 flex-wrap: wrap;
                 align-content: flex-start;
-                border-left: 1px solid ${({theme}) => theme.palette.divider};
+                /* border-left: 1px solid ${({theme}) => theme.palette.divider}; */
                 transition: 100ms width ease-in-out;
 
                 > .no-data {
@@ -449,6 +528,34 @@ const StyledPage = styled(StyledPageFC)`
                     opacity: 0.5;
                     margin-top: 50px;
                     
+                }
+
+                > .menu-header {
+                    position: sticky;
+                    top: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 300px;
+                    padding: 20px 0;
+                    height: 70px;
+                    z-index: 110;
+                    background-color: ${(props) => props.theme.palette.background.paper};
+                    border-bottom: 1px solid ${({theme}) => theme.palette.divider};
+
+                    > h4 {
+                        margin-left: 15px;
+                    }
+
+                    > .toggle-btn {
+                        width: fit-content;
+                        height: fit-content;
+                        position: absolute;
+                        right: -20px;
+                        border-radius: 50%;
+                        border: 1px solid ${({theme}) => theme.palette.divider};
+                        background-color: ${({theme}) => theme.palette.background.default};
+                    }
                 }
             }
 
@@ -486,6 +593,7 @@ const StyledPage = styled(StyledPageFC)`
                         margin-left: auto;
                     }
                 }
+
                 > .content-body {
                     display: flex;
                     flex: 0 1 100%;
@@ -493,6 +601,32 @@ const StyledPage = styled(StyledPageFC)`
                     padding: 20px 0;
                     align-items: center;
                     flex-wrap: wrap;
+                }
+
+                > .no-data {
+                    display: flex;
+                    flex: 0 1 100%;
+                    height: 400px;
+                    align-items: center;
+                    align-content: center;
+                    flex-wrap: wrap;
+
+                    > h1, > h3 {
+                        flex: 0 1 100%;
+                        opacity: 0.5;
+                        height: fit-content;
+                        text-align: center;
+                    }
+
+                    > .btn-container {
+                        display: flex;
+                        margin-top: 10px;
+                       flex: 0 1 100%;
+                       height: fit-content;
+                       justify-content: center;
+                       align-items: center;
+                    }
+
                 }
             }
         }

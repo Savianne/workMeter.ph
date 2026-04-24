@@ -1,6 +1,6 @@
 import StyledPage from "./StyledPage"
 
-export default function Page() {
+export default async function Page() {
   return (
     <StyledPage />
   )

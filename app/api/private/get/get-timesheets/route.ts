@@ -10,7 +10,9 @@ export async function POST(req: NextRequest) {;
     try {
         const formData = await req.json();
         if(!(
-            formData.page
+            formData.firstItemId &&
+            formData.lastItemId &&
+            formData.limit
         )) throw ({
             message: "Missing required data",
             code: "MISSING_DATA"
@@ -19,20 +21,23 @@ export async function POST(req: NextRequest) {;
         const [result] = await db.query<RowDataPacket[]>(`SELECT COUNT(*) AS total FROM timesheet WHERE company_id = ?`, [token?.companyId]);
         
         const total = result[0].total;
-        const limit = 10;
-        const offset = (formData.page - 1) * limit;
-        const totalPages = Math.ceil(total / limit);
 
-        const [rows] = await db.query<RowDataPacket[]>(`SELECT * FROM timesheet WHERE company_id = ? ORDER BY id LIMIT ? OFFSET ?`, [token?.companyId, limit, offset])
+        //Get newly added items if available
+        const [q1] = await db.query<RowDataPacket[]>(`SELECT * FROM timesheet WHERE company_id = ? AND id > ? ORDER BY id DESC`, [token?.companyId, formData.firstItemId]);
+
+        //Get the items next to the last retrieved item
+        const [q2] = await db.query<RowDataPacket[]>(`SELECT * FROM timesheet WHERE company_id = ? AND id < ? ORDER BY id DESC LIMIT ?`, [token?.companyId, formData.lastItemId, formData.limit]);
     
+        const mappedData = [...q1, ...q2].map((item) => {
+            if(item.time_schedule == null) return item;
+            return({...item, time_schedule: JSON.parse(item.time_schedule)});
+        });
+
         const resObj: TResponseObject<any> = {
             data: {
-                page: formData.page,
-                limit: 10,
                 total,
-                totalPages,
-                hasNext: formData.page < totalPages,
-                pageData: rows,
+                limit: formData.limit,
+                pageData: mappedData
             }
         }
     

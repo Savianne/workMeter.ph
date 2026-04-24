@@ -1,6 +1,8 @@
-type TDaySchedule = {
+export type TDaySchedule = {
     in: string,
-    out: string
+    out: string,
+    break_time_hours: number,
+    work_hours: number
 }
 
 export type TWeeklySchedule = {

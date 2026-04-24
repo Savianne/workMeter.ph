@@ -67,12 +67,12 @@ const FCDeleteModal: React.FC<IStyledFC> = ({className}) => {
                                     if(res.success) {
                                         updateIsDeleting(false);
                                         deleteModalContext.closeDeleteModal();
-                                        enqueueSnackbar("Delete Success", {variant: "default", anchorOrigin: {horizontal: "center", vertical: "top"}})
+                                        // enqueueSnackbar("Delete Success", {variant: "default", anchorOrigin: {horizontal: "center", vertical: "top"}})
                                     } else throw res
                                 })
                                 .catch((err) => {
                                     updateIsDeleting(false);
-                                    enqueueSnackbar("Failed to delete", {variant: "error", anchorOrigin: {horizontal: "center", vertical: "top"}})
+                                    // enqueueSnackbar("Failed to delete", {variant: "error", anchorOrigin: {horizontal: "center", vertical: "top"}})
                                 })
                             }} 
                             >Continue delete</Button>

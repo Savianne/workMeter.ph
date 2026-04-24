@@ -15,12 +15,16 @@ export async function POST(req:NextRequest) {
             code: "MISSING_DATA"
         });
 
-        const [result] = await db.query<ResultSetHeader>("INSERT INTO timesheet (company_id, title, date, timein_schedule, threshold_late, threshold_absent) VALUES(?, ?, ?, ?, ?, ?)", [token.companyId, formData.title, formData.date, formData.timein_schedule, formData.threshold_late, formData.threshold_absent]);
+        const schedule = formData.schedule? JSON.stringify(formData.schedule) : null;
+
+        const [result] = await db.query<ResultSetHeader>("INSERT INTO timesheet (company_id, title, date, time_schedule, threshold_late, threshold_absent) VALUES(?, ?, ?, ?, ?, ?)", [token.companyId, formData.title, formData.date, schedule, formData.threshold_late, formData.threshold_absent]);
 
         const resObj: TResponseObject<any> = {
             data: {
                 id: result.insertId,
                 ...formData,
+                company_id: token.companyId,
+                time_schedule: formData.schedule,
             },
         }
 

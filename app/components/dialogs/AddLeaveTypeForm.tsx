@@ -13,6 +13,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
+import playErrorSound from '../helpers/playErrorSound';
+import playNotifSound from '../helpers/playNotifSound';
 
 import { 
     Box,
@@ -139,12 +141,14 @@ const AddLeaveTypeFormDialog: React.FC<IAddLeaveTypeFormDialog> = ({
             doApiRequest<ILeaveTypesFromDB>(
                 "/api/private/post/add-leave-type",
                 (data) => {
+                    playNotifSound();
                     onSuccess && onSuccess(data);
                     setFormValue({...defaultFormValues});
                     setFormValidation({...defaultFormValidation});
                 },
                 (state) => setIsLoading(state),
                 (error) => {
+                    playErrorSound();
                     enqueueSnackbar(error.message, {variant: "warning", anchorOrigin: {vertical: "top", horizontal: "center"}})
                 },
                 {
@@ -154,6 +158,7 @@ const AddLeaveTypeFormDialog: React.FC<IAddLeaveTypeFormDialog> = ({
             )
         }
         catch {
+            playErrorSound();
             enqueueSnackbar("Unable to submit the form. Please make sure all required fields are filled out correctly and there are no errors.", {variant: "default", anchorOrigin: {vertical: "top", horizontal: "center"}})
         }
     }
@@ -253,7 +258,7 @@ const AddLeaveTypeFormDialog: React.FC<IAddLeaveTypeFormDialog> = ({
                     <Button loading={isLoading} loadingPosition='end' onClick={onClose} autoFocus>
                         Cancel
                     </Button>
-                    <Button loading={isLoading} loadingPosition='end' variant='contained' onClick={handleSubmit} autoFocus>
+                    <Button sx={{background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)", color: "#fff"}} loading={isLoading} loadingPosition='end' variant='contained' onClick={handleSubmit} autoFocus>
                         Add
                     </Button>
                 </DialogActions>

@@ -1,4 +1,4 @@
-function computeTotalHours(timeIn: string | Date, timeOut: string | Date): number {
+function computeTotalHours(timeIn: string, timeOut: string): number {
     const dateTimeIn = new Date(`1998-08-03 ${timeIn}`);
     const dateTimeOut = new Date(`1998-08-03 ${timeOut}`);
 

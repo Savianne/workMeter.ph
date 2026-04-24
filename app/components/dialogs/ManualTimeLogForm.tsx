@@ -162,7 +162,7 @@ const ManualTimeLogForm: React.FC<IManualTimeLogFormDialog> = ({
                     timesheet_date: timesheet.date,
                     source: "Manual Time-Log",
                     timeIn: dayjs(selectedTimeIn.toDate()).format("YYYY-MM-DD HH:mm:ss"),
-                    timeOut: dayjs(selectedTimeOut?.toDate()).format("YYYY-MM-DD HH:mm:ss")
+                    timeOut: selectedTimeOut? dayjs(selectedTimeOut.toDate()).format("YYYY-MM-DD HH:mm:ss") : null
                 })
             }
         );
@@ -174,21 +174,21 @@ const ManualTimeLogForm: React.FC<IManualTimeLogFormDialog> = ({
     }
 
     React.useEffect(() => {
-        console.log(dayjs(new Date(formValues.timeIn as string).toLocaleTimeString(), "HH:mm:ss A").format("HH:mm:ss"))
-        const selectedTimeIn = dayjs(timesheet.date).set("hour", dayjs(formValues.timeIn).get("hour")).set("minutes", dayjs(formValues.timeIn).get("minutes")).set("seconds", dayjs(formValues.timeIn).get("seconds"));
-        let selectedTimeOut = formValues.timeOut? dayjs(timesheet.date).set("hour", dayjs(formValues.timeOut).get("hour")).set("minutes", dayjs(formValues.timeOut).get("minutes")).set("seconds", dayjs(formValues.timeOut).get("seconds")) : null;
-        if(selectedTimeOut) {
-            const selectedTimeInHour = selectedTimeIn.get("hour");
-            const selectedTimeOutHour = selectedTimeOut.get("hour");
-            if(selectedTimeInHour >= 12 && selectedTimeInHour <= 23 && selectedTimeOutHour >= 0 && selectedTimeOutHour <= 11) {
-                const hour = selectedTimeOutHour + 24;
-                console.log(hour)
-                selectedTimeOut = selectedTimeOut.hour(hour);
-            }
+        // console.log(dayjs(new Date(formValues.timeIn as string).toLocaleTimeString(), "HH:mm:ss A").format("HH:mm:ss"))
+        // const selectedTimeIn = dayjs(timesheet.date).set("hour", dayjs(formValues.timeIn).get("hour")).set("minutes", dayjs(formValues.timeIn).get("minutes")).set("seconds", dayjs(formValues.timeIn).get("seconds"));
+        // let selectedTimeOut = formValues.timeOut? dayjs(timesheet.date).set("hour", dayjs(formValues.timeOut).get("hour")).set("minutes", dayjs(formValues.timeOut).get("minutes")).set("seconds", dayjs(formValues.timeOut).get("seconds")) : null;
+        // if(selectedTimeOut) {
+        //     const selectedTimeInHour = selectedTimeIn.get("hour");
+        //     const selectedTimeOutHour = selectedTimeOut.get("hour");
+        //     if(selectedTimeInHour >= 12 && selectedTimeInHour <= 23 && selectedTimeOutHour >= 0 && selectedTimeOutHour <= 11) {
+        //         const hour = selectedTimeOutHour + 24;
+        //         console.log(hour)
+        //         selectedTimeOut = selectedTimeOut.hour(hour);
+        //     }
 
-            console.log(dayjs(selectedTimeIn.toDate()).format("YYYY-MM-DD"))
-            console.log(dayjs(selectedTimeOut.toDate()).format("YYYY-MM-DD"))
-        }
+        //     console.log(dayjs(selectedTimeIn.toDate()).format("YYYY-MM-DD"))
+        //     console.log(dayjs(selectedTimeOut.toDate()).format("YYYY-MM-DD"))
+        // }
         // const date = new Date("08-03-1998");
         // console.log(date.toLocaleDateString())
         // console.log(date.toLocaleTimeString())
@@ -277,7 +277,7 @@ const ManualTimeLogForm: React.FC<IManualTimeLogFormDialog> = ({
                     <Button loadingPosition='end' autoFocus onClick={handleCancel}>
                         Cancel
                     </Button>
-                    <Button loadingPosition='end' loading={isLoading} variant='contained' autoFocus onClick={handleTimeLog}>
+                    <Button sx={{background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)", color: "#fff"}} loadingPosition='end' loading={isLoading} variant='contained' autoFocus onClick={handleTimeLog}>
                         Add Time-Log
                     </Button>
                 </DialogActions>

@@ -2,7 +2,6 @@
 import { styled } from '@mui/material/styles';
 import React from "react";
 import { IStyledFC } from '@/app/types/IStyledFC';
-import ITimesheet from '@/app/types/timesheet';
 import dayjs, { Dayjs } from 'dayjs';
 import Yup, { object, number, string, date, mixed, ValidationError } from 'yup';
 import debounce from "lodash/debounce";
@@ -20,6 +19,13 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+
+interface ITimesheet {
+    title: string | null;
+    date: string | null;
+    threshold_late: number | null;
+    threshold_absent: number | null;
+}
 
 const formDefaultValues:ITimesheet = {
     title: "",

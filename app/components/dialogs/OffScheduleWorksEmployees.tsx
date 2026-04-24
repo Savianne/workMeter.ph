@@ -19,6 +19,7 @@ import { ITimesheetFromDB } from '@/app/types/timesheet';
 import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker'
 import playErrorSound from '../helpers/playErrorSound';
 import playNotifSound from '../helpers/playNotifSound';
+import computeTotalHours from '@/app/helpers/computeTotalHours';
 
 import { 
     Box,
@@ -29,6 +30,7 @@ import {
     Dialog,
     Skeleton,
     Tooltip,
+    TextField,
     Divider,
     DialogActions,
     DialogContent,
@@ -107,26 +109,60 @@ const Form = styled(Box)`
         }
         
         > .select-employee {
-            position: sticky;
+            display: flex;
+            flex: 0 1 100%;
+            /* position: sticky; */
             flex-wrap: wrap;
             gap: 10px;
-            top: 0;
+            /* top: 0; */
             background-color: ${props => props.theme.palette.background.paper};
             z-index: 10;
             padding: 10px;
 
             .collapes {
                 width: 100%;
-                
-                .row {
-                    display: flex;
-                    flex: 0 1 100%;
-                    gap: 10px;
 
-                    .col {
-                        display: flex;
-                        flex: 1;
-                        /* background-col   or: #ffa6005c; */
+                .input-container {
+                    width: 100%;
+
+                    h4 {
+                        padding: 0 0 15px 0;
+                    }
+
+                    .container {
+                        display: flex; 
+                        width: 100%; 
+                        gap: 15px; 
+                        flex-wrap: wrap;
+                        
+                        > .input-area {
+                            display: flex;
+                            flex: 0 1 400px;
+                            gap: 15px;
+                            flex-wrap: wrap;
+                            
+                            > .row {
+                                flex: 0 1 100%;
+                            }
+                        }
+
+                        > .conputed-values-area {
+                            display: flex;
+                            padding: 15px;
+                            flex-wrap: wrap;
+                            flex: 1;
+
+                            > .data {
+                                display: flex;
+                                align-items: center;
+                                flex: 0 1 100%;
+
+                                > strong {
+                                    margin-left: auto;
+                                    font-size: 13px;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -160,11 +196,12 @@ const OffScheduleWorkEmployees: React.FC<IOffScheduleWorksEmployeesDialog> = ({
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const [selectedEmployee, setSelectedEmployee] = React.useState<null | EmployeeSelectData>(null);
-    const [schedule, setSchedule] = React.useState<{timeIn: string | null, timeOut: string | null}>({timeIn: null, timeOut: null})
+    const [schedule, setSchedule] = React.useState<{timeIn: string | null, timeOut: string | null, break_time_hours: number | null}>({timeIn: null, timeOut: null, break_time_hours: null})
     const [list, setList] = React.useState<IOffScheduleEmployeesDataFromDb[]>([]);
     const [isAdding, setIsAdding] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(true);
     const [showInfo, setShowInfo] = React.useState(true);
+    const [totalHours, setTotalHours] = React.useState(0);
 
     const handleAdd = async () => {
         if(selectedEmployee && timesheet && schedule.timeIn && schedule.timeOut) {
@@ -187,7 +224,7 @@ const OffScheduleWorkEmployees: React.FC<IOffScheduleWorksEmployeesDialog> = ({
                 return enqueueSnackbar("Time-out cannot be earlier than time-in.", {variant: "warning", anchorOrigin: {vertical: "top", horizontal: "center"}})
             }
 
-             const diff = dateTimeOut.getTime() - dateTimeIn.getTime();
+            const diff = dateTimeOut.getTime() - dateTimeIn.getTime();
 
             const thirtyMinutes = 60 * 60 * 1000;
 
@@ -199,20 +236,39 @@ const OffScheduleWorkEmployees: React.FC<IOffScheduleWorksEmployeesDialog> = ({
                 );
             }
 
+            if(Number(schedule.break_time_hours) < 0 || Number(schedule.break_time_hours) > 5) {
+                playErrorSound();
+                return enqueueSnackbar(
+                    "Break time must be greater than or equal to 0 and less than 5 hours.",
+                    { variant: "warning", anchorOrigin: { vertical: "top", horizontal: "center" } }
+                );
+            }
+            const totalHours = computeTotalHours(new Date(schedule.timeIn).toLocaleTimeString(), new Date(schedule.timeOut).toLocaleTimeString());
+
+            const workHour = totalHours - (schedule.break_time_hours || 0);
+
+            if(workHour < 1) {
+                playErrorSound();
+                return enqueueSnackbar(
+                    "The total work duration must be greater than 1 hour to proceed.",
+                    { variant: "warning", anchorOrigin: { vertical: "top", horizontal: "center" } }
+                );
+            }
+
             doApiRequest<{id: string}>(
                 "/api/private/post/add-off-schedule-employee",
                 (data) => {
                     playNotifSound();
                     enqueueSnackbar("Add Success", {variant: "default", anchorOrigin: {vertical: "top", horizontal: "center"}});
                     setList([...list, {...selectedEmployee, id: data.id, time_in: selectedTimeIn || "07:00:00", time_out: selectedTimeOut || "16:00:00"}]);
-                    setSchedule({timeIn: null, timeOut: null});
+                    setSchedule({timeIn: null, timeOut: null, break_time_hours: 0});
                     setSelectedEmployee(null);
                 },
                 (state) => setIsAdding(state),
                 (error) => enqueueSnackbar(error.message, {variant: error.code == "EMPLOYEE_HAS_SCHED" || error.code == "EMPLOYEE_IN_LIST"? "warning" : 'error', anchorOrigin: {vertical: "top", horizontal: "center"}}),
                 {
                     method: 'POST',
-                    body: JSON.stringify({employee_id: selectedEmployee?.employee_id, timesheet_id: timesheet.id, timesheet_date: timesheet.date, time_in: selectedTimeIn, time_out: selectedTimeOut})
+                    body: JSON.stringify({employee_id: selectedEmployee?.employee_id, timesheet_id: timesheet.id, timesheet_date: timesheet.date, time_in: selectedTimeIn, time_out: selectedTimeOut, break_time_hours: schedule.break_time_hours, work_hours: workHour})
                 }
             )
         }
@@ -232,13 +288,22 @@ const OffScheduleWorkEmployees: React.FC<IOffScheduleWorksEmployeesDialog> = ({
             )
         }
     }, [timesheet, state])
+
+    React.useEffect(() => {
+        if(schedule && schedule.timeIn && schedule.timeOut && Number(schedule.break_time_hours) >= 0) {
+            const totalHours = computeTotalHours(new Date(schedule.timeIn).toLocaleTimeString(), new Date(schedule.timeOut).toLocaleTimeString());
+            setTotalHours(totalHours)
+        } else {
+            setTotalHours(0)
+        }
+    }, [schedule]);
     
     return(
         <React.Fragment>
             <BootstrapDialog
                 container={container}
                 fullScreen={fullScreen}
-                maxWidth="sm"
+                maxWidth="md"
                 open={state}
                 slots={{
                     transition: Transition,
@@ -280,56 +345,83 @@ const OffScheduleWorkEmployees: React.FC<IOffScheduleWorksEmployeesDialog> = ({
 
                         </Collapse>
                         <div className="row select-employee">
-                            {/* <Divider orientation='horizontal' sx={{flex: "0 1 100%"}}/> */}
                             <EmployeeSelect value={selectedEmployee} onChange={(e) => setSelectedEmployee(e)} />
                             <Collapse className='collapes' in={!!selectedEmployee}>
-                                <div className="row">
-                                    <div className="col">
-                                        <MobileTimePicker
-                                        label="Time-in Schedule"
-                                        views={['hours', "minutes"]}
-                                        orientation='landscape'
-                                        slotProps={{
-                                            field: { clearable: false }, 
-                                            textField: {
-                                                sx: {flex: 1}
-                                            },
-                                            dialog: {
-                                                sx: { zIndex: 2000},
-                                            },
-                                        }} 
-                                        value={schedule.timeIn? dayjs(schedule.timeIn) : null}
-                                        onChange={(e) => setSchedule({...schedule, timeIn: e? dayjs(e).toISOString() : null})}
-                                        onAccept={(e) => {
-                                            setSchedule({...schedule, timeIn: e? dayjs(e).toISOString() : null});
-                                        }}
-                                        />
-                                    </div>
-                                    <div className="col">
-                                        <MobileTimePicker
-                                        label="Time-Out Schedule"
-                                        views={['hours', "minutes"]}
-                                        orientation='landscape'
-                                        slotProps={{
-                                            field: { clearable: false }, 
-                                            textField: {
-                                                sx: {flex: 1}
-                                            },
-                                            dialog: {
-                                                sx: { zIndex: 2000},
-                                            },
-                                        }} 
-                                        value={schedule.timeOut? dayjs(schedule.timeOut) : null}
-                                        onChange={(e) => setSchedule({...schedule, timeOut: e? dayjs(e).toISOString() : null})}
-                                        onAccept={(e) => {
-                                            setSchedule({...schedule, timeOut: e? dayjs(e).toISOString() : null});
-                                        }}
-                                        />
-                                    </div>
+                                <div className='input-container'>
+                                    <h4>Time Settings</h4>
+                                    <Box className="container">
+                                        <div className="input-area">
+                                            <div className="row">
+                                                <MobileTimePicker
+                                                label="Time-in Schedule"
+                                                views={['hours', "minutes"]}
+                                                orientation='landscape'
+                                                slotProps={{
+                                                    field: { clearable: false }, 
+                                                    textField: {
+                                                        sx: {flex: 1},
+                                                        fullWidth: true
+                                                    },
+                                                    dialog: {
+                                                        sx: { zIndex: 2000},
+                                                    },
+                                                }} 
+                                                value={schedule.timeIn? dayjs(schedule.timeIn) : null}
+                                                onChange={(e) => setSchedule({...schedule, timeIn: e? dayjs(e).toISOString() : null})}
+                                                onAccept={(e) => {
+                                                    setSchedule({...schedule, timeIn: e? dayjs(e).toISOString() : null});
+                                                }}
+                                                />
+                                            </div>
+                                            <div className="row">
+                                                <MobileTimePicker
+                                                label="Time-Out Schedule"
+                                                views={['hours', "minutes"]}
+                                                orientation='landscape'
+                                                slotProps={{
+                                                    field: { clearable: false }, 
+                                                    textField: {
+                                                        sx: {flex: 1},
+                                                        fullWidth: true
+                                                    },
+                                                    dialog: {
+                                                        sx: { zIndex: 2000},
+                                                    },
+                                                }} 
+                                                value={schedule.timeOut? dayjs(schedule.timeOut) : null}
+                                                onChange={(e) => setSchedule({...schedule, timeOut: e? dayjs(e).toISOString() : null})}
+                                                onAccept={(e) => {
+                                                    setSchedule({...schedule, timeOut: e? dayjs(e).toISOString() : null});
+                                                }}
+                                                />
+                                            </div>
+                                            <div className="row">
+                                                <TextField fullWidth type='number' label="Total Breaktime Hour(s)" 
+                                                value={schedule.break_time_hours || 0} 
+                                                onChange={(e) => {
+                                                    setSchedule({...schedule, break_time_hours: +e.target.value});
+                                                }}/>
+                                            </div>
+                                        </div>
+                                        <Paper className="conputed-values-area">
+                                            <Chip sx={{flex: "0 1 100%"}} label="Paid Work Hour(s) = Total hour(s) - Breaktime hour(s)"/>
+                                            <div className="data">
+                                                <h6>Total Hour(s) between time-in and time-out:</h6>
+                                                <strong>{totalHours}</strong>
+                                            </div>
+                                            <div className="data">
+                                                <h6>Total Breaktime hour(s):</h6>
+                                                <strong>{schedule.break_time_hours || 0}</strong>
+                                            </div>
+                                            <div className="data" style={{color: totalHours - Number(schedule.break_time_hours || 0) < 1? "red": "inherit"}}>
+                                                <h6>Work Hour(s):</h6>
+                                                <strong>{totalHours - Number(schedule.break_time_hours || 0)}</strong>
+                                            </div>
+                                        </Paper>
+                                    </Box>
                                 </div>
-                                <Button fullWidth variant='contained' loading={isAdding} disabled={selectedEmployee === null || schedule.timeIn == null || schedule.timeOut == null} onClick={handleAdd} sx={{marginTop: "10px"}}>Add</Button>
+                                <Button sx={{background: "linear-gradient(90deg, var(--primaryAppColor) 0%, var(--secondaryAppColor) 100%)", color: "#fff", marginTop: "10px"}} fullWidth variant='contained' loading={isAdding} disabled={selectedEmployee === null || schedule.timeIn == null || schedule.timeOut == null} onClick={handleAdd}>Add</Button>
                             </Collapse>
-                            {/* <Divider orientation='horizontal' sx={{flex: "0 1 100%"}}/> */}
                         </div>
                         {
                             isLoading? <>

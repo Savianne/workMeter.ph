@@ -15,7 +15,10 @@ export async function POST(req:NextRequest) {
             code: "MISSING_DATA"
         })
 
-        const [res] = await db.query<ResultSetHeader>("UPDATE timesheet SET title = ?, threshold_late = ?, threshold_absent = ?, timein_schedule = ? WHERE id = ? AND company_id = ?", [formData.title, formData.threshold_late || 0, formData.threshold_absent | 0, formData.timein_schedule, formData.id, token.companyId]);
+        const schedule = formData.schedule? JSON.stringify(formData.schedule) : null;
+
+        const [res] = await db.query<ResultSetHeader>("UPDATE timesheet SET title = ?, threshold_late = ?, threshold_absent = ?, time_schedule = ? WHERE id = ? AND company_id = ?", [formData.title, formData.threshold_late || 0, formData.threshold_absent | 0, schedule, formData.id, token.companyId]);
+        
         if(!res.affectedRows) throw "Failed to update"
 
         const resObj: TResponseObject<{done: boolean}> = {

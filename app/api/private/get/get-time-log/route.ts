@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {;
 
         const [rows] = await db.query<RowDataPacket[]>(`
             SELECT 
-                atl.id, atl.time_in, atl.time_out, atl.source, atl.company_id, atl.timesheet_id, 
+                atl.break_time_hours, atl.is_overtime_authorized, atl.id, atl.time_in, atl.time_out, atl.source, atl.company_id, atl.timesheet_id, atl.is_dayoff, atl.scheduled_time_in, atl.scheduled_time_out,
                 e.first_name, e.middle_name, e.surname, e.ext_name, e.employee_id, e.designation, e.display_picture
             FROM attendance_time_log AS atl
                 JOIN employees AS e ON atl.employee_id = e.employee_id
